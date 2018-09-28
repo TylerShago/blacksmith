@@ -1,12 +1,25 @@
 <?php
 
+session_start();
 /**
  * createGameData
  * Creates a new session data
  * 
  * @return bool
  */
-
+function createGameData()
+{
+  $_SESSION['blacksmith'] = [
+    'response' => [],
+    'gold' => 15,
+    'wood' => 0,
+    'ore' => 0,
+    'axes' => 0,
+    'staffs' => 0,
+    'fire' => false
+  ];
+  return isset($_SESSION['blacksmith']);
+}
 
 /**
  * getResponse
@@ -14,7 +27,8 @@
  * 
  * @return string
  */
-function getResponse () {
+function getResponse()
+{
   return implode('<br><br>', $_SESSION['blacksmith']['response']);
 }
 
@@ -26,10 +40,11 @@ function getResponse () {
  * @param [string] $response
  * @return string
  */
-function updateResponse ($response) {
+function updateResponse($response)
+{
   if (!isset($_SESSION['blacksmith'])) {
     createGameData();
-  } 
+  }
 
   array_push($_SESSION['blacksmith']['response'], $response);
 
@@ -43,8 +58,23 @@ function updateResponse ($response) {
  * 
  * @return string
  */
-
-
+function fire()
+{
+  if ($_SESSION['blacksmith']['fire']) {
+   //turn off fire
+    $_SESSION['blacksmith']['fire'] = flase;
+    return "You have put out the fire.";
+  } else {
+    // turn on the if enough wood
+    if ($_SESSION['blacksmith']['wood'] > 0) {
+      $_SESSION['blacksmith']["wood"]--;
+      $_SESSION['blacksmith']["fire"] = true;
+      return "You have start the fire.";
+    } else {
+      return "You don't have enough wood.";
+    }
+  }
+}
 /**
  * buy
  * Used to buy items (wood or ore)
@@ -53,7 +83,31 @@ function updateResponse ($response) {
  * @param [string] $item
  * @return string
  */
-
+function buy($item)
+{
+  if ($_SESSION['blacksmith']['fire']) {
+    return "You must put out the fire.";
+  } else {
+    // if $item is set
+    if (isset($item)) {
+     //if $item is part of SETTINGS
+      if (isset(SETTINGS[$item])) {
+        // check if player has enough gold
+        if ($_SESSION['blacksmith']['gold'] >= SETTINGS[$item]['gold']) {
+          $_SESSION['blacksmith'][$item]++;
+          $_SESSION['blacksmith']['gold'] -= SETTINGS[$item]['gold'];
+          return "You have bought 1 piece of {$item}.";
+        } else {
+          return "You do not have enough gold.";
+        }
+      } else {
+        return "You cannot buy a {$item}.";
+      }
+    } else {
+      return "You must choose an item to buy";
+    }
+  }
+}
 
 /**
  * make
@@ -98,7 +152,8 @@ function updateResponse ($response) {
  * 
  * @return string
  */
-function help () {
+function help()
+{
   return 'Welcome to Blacksmith, the text based blacksmith game. Use the following commands to play the game: <span class="red">buy <em>item</em></span>, <span class="red">sell <em>item</em></span>, <span class="red">make <em>item</em></span>, <span class="red">fire</span>. To restart the game use the <span class="red">restart</span> command For these instruction again use the <span class="red">help</span> command';
 }
 
@@ -119,3 +174,18 @@ function help () {
  *      - updateResponse with invalid command  
  */
 
+if (isset($_POST['command'])) {
+   // '  ' splits command and options, returns arry
+  $command = explode(' ', strtolower($_POST['command']));
+  if (function_exists($command[0])) {
+    if (isset($command[1])) {
+      $response = $command[0]($command[1]);
+      updateResponse($response);
+    } else {
+      $response = $command[0]();
+      updateResponse($response);
+    }
+  } else {
+    updateResponse("{$_POST['command']} is not a valid command.");
+  }
+}
